@@ -3,7 +3,7 @@
 An AI-powered interview preparation tool that analyzes your resume against a job description and generates tailored interview questions.
 
 ##  Live Demo
-Coming soon...
+[https://ai-interview-coach-alpha.vercel.app](https://ai-interview-coach-alpha.vercel.app)
 
 ##  Features
 
