@@ -1,6 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { darkTheme } from "@/themes/darkTheme";
+import { lightTheme } from "@/themes/lightTheme";
+import { spaceTheme } from "@/themes/spaceTheme";
+
+const themes = [darkTheme, lightTheme, spaceTheme];
 
 interface AnalysisResult {
   matchScore: number;
@@ -27,13 +32,13 @@ interface InterviewSummary {
 }
 
 export default function Home() {
+  const [themeIndex, setThemeIndex] = useState(0);
+  
   const [jobDescription, setJobDescription] = useState("");
   const [resume, setResume] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState("");
-
-  // Interview states
   const [interviewStarted, setInterviewStarted] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState("");
@@ -41,13 +46,16 @@ export default function Home() {
   const [interviewLoading, setInterviewLoading] = useState(false);
   const [interviewComplete, setInterviewComplete] = useState(false);
   const [summary, setSummary] = useState<InterviewSummary | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Theme variables
+  const theme = themes[themeIndex];
 
   const handleAnalyze = async () => {
     if (!jobDescription.trim() || !resume.trim()) {
       setError("Please fill in both the Job Description and Resume fields.");
       return;
     }
-
     setLoading(true);
     setError("");
     setResult(null);
@@ -63,16 +71,10 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobDescription, resume }),
       });
-
       const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || "Something went wrong.");
-        return;
-      }
-
+      if (!response.ok) { setError(data.error || "Something went wrong."); return; }
       setResult(data);
-    } catch (err) {
+    } catch {
       setError("Failed to connect to the server. Please try again.");
     } finally {
       setLoading(false);
@@ -82,13 +84,14 @@ export default function Home() {
   const startInterview = () => {
     if (!result) return;
     setInterviewStarted(true);
-    const firstQuestion = result.interviewQuestions[0].question;
-    setMessages([{ role: "assistant", content: `Let's begin your mock interview! I'll ask you ${result.interviewQuestions.length} questions based on the job description.\n\n**Question 1:** ${firstQuestion}` }]);
+    setMessages([{
+      role: "assistant",
+      content: `Let's begin your mock interview! I'll ask you ${result.interviewQuestions.length} questions.\n\nQuestion 1 of ${result.interviewQuestions.length}: ${result.interviewQuestions[0].question}`
+    }]);
   };
 
   const handleAnswerSubmit = async () => {
     if (!currentAnswer.trim() || !result) return;
-
     const currentQuestion = result.interviewQuestions[currentQuestionIndex].question;
     const newMessages: Message[] = [...messages, { role: "user", content: currentAnswer }];
     setMessages(newMessages);
@@ -97,43 +100,25 @@ export default function Home() {
 
     try {
       const isLastQuestion = currentQuestionIndex === result.interviewQuestions.length - 1;
-
       const response = await fetch("/api/interview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: newMessages,
-          jobDescription,
-          currentQuestion,
-          isComplete: false,
-        }),
+        body: JSON.stringify({ messages: newMessages, jobDescription, currentQuestion, isComplete: false }),
       });
-
       const data = await response.json();
       const responseText = data.response;
-
       const hasNext = responseText.includes("NEXT:");
       const feedbackPart = hasNext ? responseText.split("NEXT:")[0].trim() : responseText.trim();
       const nextPart = hasNext ? responseText.split("NEXT:")[1].trim() : "";
-
       const updatedMessages: Message[] = [...newMessages, { role: "assistant", content: feedbackPart }];
 
       if (isLastQuestion || nextPart === "INTERVIEW_COMPLETE") {
         setMessages(updatedMessages);
-        setInterviewLoading(true);
-
-        // Get final summary
         const summaryResponse = await fetch("/api/interview", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: updatedMessages,
-            jobDescription,
-            currentQuestion,
-            isComplete: true,
-          }),
+          body: JSON.stringify({ messages: updatedMessages, jobDescription, currentQuestion, isComplete: true }),
         });
-
         const summaryData = await summaryResponse.json();
         const parsed = JSON.parse(summaryData.response);
         setSummary(parsed);
@@ -142,44 +127,68 @@ export default function Home() {
       } else {
         const nextIndex = currentQuestionIndex + 1;
         setCurrentQuestionIndex(nextIndex);
-        const nextQuestion = result.interviewQuestions[nextIndex].question;
         setMessages([...updatedMessages, {
           role: "assistant",
-          content: `**Question ${nextIndex + 1}:** ${nextQuestion}`
+          content: `Question ${nextIndex + 1} of ${result.interviewQuestions.length}: ${result.interviewQuestions[nextIndex].question}`
         }]);
       }
-    } catch (err) {
+    } catch {
       setError("Something went wrong during the interview.");
     } finally {
       setInterviewLoading(false);
     }
   };
 
+  const scoreColor = (score: number) => score >= 70 ? "#10b981" : score >= 40 ? "#f59e0b" : "#ef4444";
+
   return (
-    <main className="min-h-screen bg-gray-50 py-10 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div style={{ minHeight: "100vh", background: theme.bg, transition: "background 0.3s ease", fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 16px" }}>
 
         {/* Header */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-gray-900">AI Interview Coach</h1>
-          <p className="text-gray-500 mt-2">Paste your Job Description and Resume to get your match score and practice your interview.</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "48px" }}>
+          <div>
+            <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: theme.text, margin: 0 }}>AI Interview Coach</h1>
+            <p style={{ color: theme.subtext, fontSize: "0.9rem", marginTop: "4px" }}>Resume analysis · Skill matching · Mock interviews</p>
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+  {themes.map((t, i) => (
+    <button
+      key={t.name}
+      onClick={() => setThemeIndex(i)}
+      style={{
+        padding: "8px 14px", borderRadius: "8px", fontSize: "0.8rem", fontWeight: 600,
+        cursor: "pointer", transition: "all 0.2s ease",
+        background: themeIndex === i ? theme.btnBg : theme.card,
+        color: themeIndex === i ? "#ffffff" : theme.text,
+        border: `1px solid ${themeIndex === i ? theme.btnBg : theme.cardBorder}`,
+      }}
+    >
+      {t.name === "Dark" ? "🌙" : t.name === "Light" ? "☀️" : "🚀"} {t.name}
+    </button>
+  ))}
+</div>
         </div>
 
         {/* Input Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Job Description</label>
+            <label style={{ color: theme.label, fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", display: "block", marginBottom: "8px" }}>
+              Job Description
+            </label>
             <textarea
-              className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900"
+              style={{ width: "100%", height: "220px", padding: "14px", borderRadius: "10px", border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.inputText, fontSize: "0.875rem", lineHeight: 1.6, resize: "none", outline: "none", fontFamily: "system-ui, sans-serif", boxSizing: "border-box" }}
               placeholder="Paste the job description here..."
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Your Resume</label>
+            <label style={{ color: theme.label, fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", display: "block", marginBottom: "8px" }}>
+              Your Resume
+            </label>
             <textarea
-              className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900"
+              style={{ width: "100%", height: "220px", padding: "14px", borderRadius: "10px", border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.inputText, fontSize: "0.875rem", lineHeight: 1.6, resize: "none", outline: "none", fontFamily: "system-ui, sans-serif", boxSizing: "border-box" }}
               placeholder="Paste your resume here..."
               value={resume}
               onChange={(e) => setResume(e.target.value)}
@@ -189,53 +198,51 @@ export default function Home() {
 
         {/* Error */}
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
-            {error}
+          <div style={{ marginBottom: "16px", padding: "12px 16px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "8px", color: "#ef4444", fontSize: "0.875rem" }}>
+            ⚠️ {error}
           </div>
         )}
 
         {/* Analyze Button */}
-        <div className="text-center mb-10">
+        <div style={{ textAlign: "center", marginBottom: "40px" }}>
           <button
             onClick={handleAnalyze}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold px-10 py-3 rounded-lg transition-colors"
+            style={{ padding: "14px 40px", borderRadius: "8px", background: loading ? theme.subtext : theme.btnBg, color: "#ffffff", fontSize: "0.9rem", fontWeight: 700, border: "none", cursor: loading ? "not-allowed" : "pointer", transition: "all 0.3s ease" }}
           >
             {loading ? "Analyzing..." : "Analyze & Generate Questions"}
           </button>
         </div>
 
-        {/* Results Section */}
+        {/* Results */}
         {result && (
-          <div className="space-y-6">
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
             {/* Match Score */}
-            <div className="bg-white rounded-xl shadow-sm border p-6 text-center">
-              <p className="text-gray-500 text-sm mb-1">Resume Match Score</p>
-              <p className={`text-6xl font-bold ${result.matchScore >= 70 ? "text-green-500" : result.matchScore >= 40 ? "text-yellow-500" : "text-red-500"}`}>
-                {result.matchScore}%
-              </p>
-              <p className="text-gray-600 mt-4 text-sm">{result.summary}</p>
+            <div style={{ background: theme.card, border: `1px solid ${theme.cardBorder}`, borderRadius: "12px", padding: "32px", textAlign: "center", boxShadow: theme.shadow }}>
+              <p style={{ color: theme.subtext, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>Resume Match Score</p>
+              <p style={{ fontSize: "5rem", fontWeight: 900, color: scoreColor(result.matchScore), lineHeight: 1 }}>{result.matchScore}%</p>
+              <p style={{ color: theme.subtext, marginTop: "16px", fontSize: "0.9rem", lineHeight: 1.6, maxWidth: "600px", margin: "16px auto 0" }}>{result.summary}</p>
             </div>
 
-            {/* Strengths and Missing Skills */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h2 className="font-semibold text-gray-800 mb-4">✅ Your Strengths</h2>
-                <ul className="space-y-2">
+            {/* Strengths & Gaps */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <div style={{ background: theme.card, border: `1px solid ${theme.cardBorder}`, borderRadius: "12px", padding: "24px", boxShadow: theme.shadow }}>
+                <p style={{ color: "#10b981", fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "16px" }}>✅ Strengths</p>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
                   {result.strengths.map((s, i) => (
-                    <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                      <span className="text-green-500 mt-0.5">•</span> {s}
+                    <li key={i} style={{ fontSize: "0.875rem", color: theme.text, display: "flex", gap: "8px" }}>
+                      <span style={{ color: "#10b981" }}>•</span> {s}
                     </li>
                   ))}
                 </ul>
               </div>
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h2 className="font-semibold text-gray-800 mb-4">⚠️ Missing Skills</h2>
-                <ul className="space-y-2">
+              <div style={{ background: theme.card, border: `1px solid ${theme.cardBorder}`, borderRadius: "12px", padding: "24px", boxShadow: theme.shadow }}>
+                <p style={{ color: "#f59e0b", fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "16px" }}>⚠️ Missing Skills</p>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
                   {result.missingSkills.map((s, i) => (
-                    <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                      <span className="text-yellow-500 mt-0.5">•</span> {s}
+                    <li key={i} style={{ fontSize: "0.875rem", color: theme.text, display: "flex", gap: "8px" }}>
+                      <span style={{ color: "#f59e0b" }}>•</span> {s}
                     </li>
                   ))}
                 </ul>
@@ -243,79 +250,66 @@ export default function Home() {
             </div>
 
             {/* Interview Questions */}
-            <div className="bg-white rounded-xl shadow-sm border p-6">
-              <h2 className="font-semibold text-gray-800 mb-4">🎯 Interview Questions</h2>
-              <div className="space-y-4">
+            <div style={{ background: theme.card, border: `1px solid ${theme.cardBorder}`, borderRadius: "12px", padding: "24px", boxShadow: theme.shadow }}>
+              <p style={{ color: theme.label, fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "16px" }}>🎯 Interview Questions</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {result.interviewQuestions.map((q, i) => (
-                  <div key={i} className="p-4 bg-gray-50 rounded-lg">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full mr-2 ${
-                      q.type === "Technical" ? "bg-blue-100 text-blue-700" :
-                      q.type === "Behavioral" ? "bg-purple-100 text-purple-700" :
-                      "bg-orange-100 text-orange-700"
-                    }`}>
+                  <div key={i} style={{ padding: "16px", background: theme.inputBg, borderRadius: "8px", border: `1px solid ${theme.cardBorder}` }}>
+                    <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 10px", borderRadius: "20px", textTransform: "uppercase", letterSpacing: "0.08em", background: theme.tagBg, color: theme.tagText }}>
                       {q.type}
                     </span>
-                    <p className="text-sm text-gray-700 mt-2">{q.question}</p>
+                    <p style={{ color: theme.text, fontSize: "0.875rem", marginTop: "10px", lineHeight: 1.6 }}>{q.question}</p>
                   </div>
                 ))}
               </div>
-
-              {/* Start Interview Button */}
               {!interviewStarted && (
-                <div className="text-center mt-6">
-                  <button
-                    onClick={startInterview}
-                    className="bg-green-600 hover:bg-green-700 text-white font-semibold px-10 py-3 rounded-lg transition-colors"
-                  >
+                <div style={{ textAlign: "center", marginTop: "24px" }}>
+                  <button onClick={startInterview}
+                    style={{ padding: "14px 40px", borderRadius: "8px", background: theme.greenBtn, color: "#ffffff", fontSize: "0.9rem", fontWeight: 700, border: "none", cursor: "pointer" }}>
                     🎤 Start Mock Interview
                   </button>
                 </div>
               )}
             </div>
 
-            {/* Interview Simulator */}
+            {/* Interview Chat */}
             {interviewStarted && (
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h2 className="font-semibold text-gray-800 mb-4">🎤 Mock Interview</h2>
-
-                {/* Chat Messages */}
-                <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
+              <div style={{ background: theme.card, border: `1px solid ${theme.cardBorder}`, borderRadius: "12px", padding: "24px", boxShadow: theme.shadow }}>
+                <p style={{ color: theme.label, fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "16px" }}>🎤 Mock Interview</p>
+                <div style={{ maxHeight: "400px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
                   {messages.map((m, i) => (
-                    <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[80%] p-4 rounded-lg text-sm ${
-                        m.role === "user"
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-100 text-gray-800"
-                      }`}>
+                    <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                      <div style={{
+                        maxWidth: "80%", padding: "12px 16px", borderRadius: "12px", fontSize: "0.875rem", lineHeight: 1.7,
+                        background: m.role === "user" ? theme.chatUserBg : theme.chatAiBg,
+                        border: m.role === "user" ? "none" : `1px solid ${theme.chatAiBorder}`,
+                        color: m.role === "user" ? "#ffffff" : theme.chatAiText
+                      }}>
                         {m.content}
                       </div>
                     </div>
                   ))}
                   {interviewLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-gray-100 text-gray-500 p-4 rounded-lg text-sm">
+                    <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                      <div style={{ padding: "12px 16px", borderRadius: "12px", background: theme.chatAiBg, border: `1px solid ${theme.chatAiBorder}`, color: theme.subtext, fontSize: "0.875rem" }}>
                         Thinking...
                       </div>
                     </div>
                   )}
+                  <div ref={chatEndRef} />
                 </div>
-
-                {/* Answer Input */}
                 {!interviewComplete && (
-                  <div className="flex gap-3">
+                  <div style={{ display: "flex", gap: "12px" }}>
                     <textarea
-                      className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900"
+                      style={{ flex: 1, padding: "12px", borderRadius: "8px", border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.inputText, fontSize: "0.875rem", lineHeight: 1.6, resize: "none", outline: "none", fontFamily: "system-ui, sans-serif" }}
                       rows={3}
                       placeholder="Type your answer here..."
                       value={currentAnswer}
                       onChange={(e) => setCurrentAnswer(e.target.value)}
                       disabled={interviewLoading}
                     />
-                    <button
-                      onClick={handleAnswerSubmit}
-                      disabled={interviewLoading || !currentAnswer.trim()}
-                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold px-6 rounded-lg transition-colors"
-                    >
+                    <button onClick={handleAnswerSubmit} disabled={interviewLoading || !currentAnswer.trim()}
+                      style={{ padding: "0 24px", borderRadius: "8px", background: interviewLoading || !currentAnswer.trim() ? theme.subtext : theme.btnBg, color: "#ffffff", fontWeight: 700, border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
                       Send
                     </button>
                   </div>
@@ -323,43 +317,40 @@ export default function Home() {
               </div>
             )}
 
-            {/* Final Summary */}
+            {/* Summary */}
             {summary && (
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h2 className="font-semibold text-gray-800 mb-4">📊 Performance Summary</h2>
-
-                <div className="text-center mb-6">
-                  <p className="text-gray-500 text-sm mb-1">Overall Interview Score</p>
-                  <p className={`text-6xl font-bold ${summary.overallScore >= 70 ? "text-green-500" : summary.overallScore >= 40 ? "text-yellow-500" : "text-red-500"}`}>
-                    {summary.overallScore}%
-                  </p>
-                  <span className={`inline-block mt-2 px-4 py-1 rounded-full text-sm font-semibold ${
-                    summary.recommendation === "Hire" ? "bg-green-100 text-green-700" :
-                    summary.recommendation === "Consider" ? "bg-yellow-100 text-yellow-700" :
-                    "bg-red-100 text-red-700"
-                  }`}>
+              <div style={{ background: theme.card, border: `1px solid ${theme.cardBorder}`, borderRadius: "12px", padding: "32px", boxShadow: theme.shadow }}>
+                <p style={{ color: theme.label, fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "24px" }}>📊 Performance Summary</p>
+                <div style={{ textAlign: "center", marginBottom: "28px" }}>
+                  <p style={{ color: theme.subtext, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>Overall Interview Score</p>
+                  <p style={{ fontSize: "5rem", fontWeight: 900, color: scoreColor(summary.overallScore), lineHeight: 1 }}>{summary.overallScore}%</p>
+                  <span style={{
+                    display: "inline-block", marginTop: "12px", padding: "4px 20px", borderRadius: "20px", fontSize: "0.8rem", fontWeight: 700,
+                    background: summary.recommendation === "Hire" ? "rgba(16,185,129,0.1)" : summary.recommendation === "Consider" ? "rgba(245,158,11,0.1)" : "rgba(239,68,68,0.1)",
+                    color: summary.recommendation === "Hire" ? "#10b981" : summary.recommendation === "Consider" ? "#f59e0b" : "#ef4444",
+                    border: `1px solid ${summary.recommendation === "Hire" ? "rgba(16,185,129,0.3)" : summary.recommendation === "Consider" ? "rgba(245,158,11,0.3)" : "rgba(239,68,68,0.3)"}`
+                  }}>
                     {summary.recommendation}
                   </span>
-                  <p className="text-gray-600 mt-4 text-sm">{summary.summary}</p>
+                  <p style={{ color: theme.subtext, marginTop: "16px", fontSize: "0.9rem", lineHeight: 1.6, maxWidth: "600px", margin: "16px auto 0" }}>{summary.summary}</p>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
                   <div>
-                    <h3 className="font-semibold text-gray-700 mb-3">✅ What You Did Well</h3>
-                    <ul className="space-y-2">
+                    <p style={{ color: "#10b981", fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "12px" }}>✅ What You Did Well</p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
                       {summary.strengths.map((s, i) => (
-                        <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                          <span className="text-green-500">•</span> {s}
+                        <li key={i} style={{ fontSize: "0.875rem", color: theme.text, display: "flex", gap: "8px" }}>
+                          <span style={{ color: "#10b981" }}>•</span> {s}
                         </li>
                       ))}
                     </ul>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-700 mb-3">📈 Areas to Improve</h3>
-                    <ul className="space-y-2">
+                    <p style={{ color: theme.label, fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "12px" }}>📈 Areas to Improve</p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
                       {summary.improvements.map((s, i) => (
-                        <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                          <span className="text-blue-500">•</span> {s}
+                        <li key={i} style={{ fontSize: "0.875rem", color: theme.text, display: "flex", gap: "8px" }}>
+                          <span style={{ color: theme.label }}>•</span> {s}
                         </li>
                       ))}
                     </ul>
@@ -371,6 +362,6 @@ export default function Home() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }
