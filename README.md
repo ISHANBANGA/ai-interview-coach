@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎯 AI Interview Coach
 
-## Getting Started
+An AI-powered interview preparation tool that analyzes your resume against a job description and generates tailored interview questions.
 
-First, run the development server:
+## 🚀 Live Demo
+Coming soon...
 
+## ✨ Features
+
+- **Resume Match Score** — Get a percentage score showing how well your resume fits the job
+- **Strengths Analysis** — See what skills and experience make you a strong candidate
+- **Missing Skills** — Identify gaps between your resume and the job requirements
+- **Interview Questions** — Get 5 role-specific questions categorized as Technical, Behavioral, or Situational
+
+## 🛠️ Tech Stack
+
+- **Frontend** — Next.js, React, Tailwind CSS, TypeScript
+- **AI** — Google Gemini 2.5 Flash API
+- **Deployment** — Vercel (coming soon)
+
+## 📦 Getting Started
+
+1. Clone the repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+   git clone https://github.com/ISHANBANGA/ai-interview-coach.git
+   cd ai-interview-coach
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies
+```bash
+   npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables — create a `.env.local` file in the root:
+```
+   GEMINI_API_KEY=your_gemini_api_key_here
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Run the development server
+```bash
+   npm run dev
+```
 
-## Learn More
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-To learn more about Next.js, take a look at the following resources:
+## 🗺️ Roadmap
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- [x] Resume match score and analysis
+- [x] AI generated interview questions
+- [ ] Live mock interview simulator
+- [ ] Performance feedback after each answer
+- [ ] Interview history saved to database
+- [ ] Voice input support
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 👨‍💻 Author
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Ishan Banga**  
+Software Engineering Student — Ontario Tech University  
+[GitHub](https://github.com/ISHANBANGA)
