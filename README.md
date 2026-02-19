@@ -1,24 +1,24 @@
-# 🎯 AI Interview Coach
+#  AI Interview Coach
 
 An AI-powered interview preparation tool that analyzes your resume against a job description and generates tailored interview questions.
 
-## 🚀 Live Demo
+##  Live Demo
 Coming soon...
 
-## ✨ Features
+##  Features
 
 - **Resume Match Score** — Get a percentage score showing how well your resume fits the job
 - **Strengths Analysis** — See what skills and experience make you a strong candidate
 - **Missing Skills** — Identify gaps between your resume and the job requirements
 - **Interview Questions** — Get 5 role-specific questions categorized as Technical, Behavioral, or Situational
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 - **Frontend** — Next.js, React, Tailwind CSS, TypeScript
 - **AI** — Google Gemini 2.5 Flash API
 - **Deployment** — Vercel (coming soon)
 
-## 📦 Getting Started
+##  Getting Started
 
 1. Clone the repository
 ```bash
@@ -43,7 +43,7 @@ Coming soon...
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## 🗺️ Roadmap
+##  Roadmap
 
 - [x] Resume match score and analysis
 - [x] AI generated interview questions
@@ -52,7 +52,7 @@ Coming soon...
 - [ ] Interview history saved to database
 - [ ] Voice input support
 
-## 👨‍💻 Author
+##  Author
 
 **Ishan Banga**  
 Software Engineering Student — Ontario Tech University  
